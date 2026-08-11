@@ -1,0 +1,2176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="任务时间轴" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" href="icon-192.png" type="image/png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>月度任务 + 时间轴 Todo/Done</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --soft: #f3f4f6;
+      --brand: #2563eb;
+      --brand-soft: #dbeafe;
+      --done: #059669;
+      --done-soft: #d1fae5;
+      --warn: #d97706;
+      --warn-soft: #fef3c7;
+      --danger: #dc2626;
+      --danger-soft: #fee2e2;
+      --ink: #0f172a;
+      --shadow: 0 10px 30px rgba(15, 23, 42, .08);
+      --radius: 18px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.35;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: min(1460px, calc(100% - 28px));
+      margin: 16px auto calc(38px + var(--safe-bottom));
+    }
+
+    header {
+      background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+
+    .topbar, .row {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); letter-spacing: -0.04em; }
+    .subtitle { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .month-title { min-width: 150px; text-align: center; font-weight: 800; font-size: 18px; }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 9px 12px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform .08s ease, background .15s ease, border-color .15s ease;
+      min-height: 36px;
+    }
+    .btn:hover { background: var(--soft); }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .btn.primary:hover { background: #1d4ed8; }
+    .btn.done { background: var(--done); color: #fff; border-color: var(--done); }
+    .btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); }
+    .btn.ghost { background: transparent; }
+    .btn.danger { color: var(--danger); border-color: #fecaca; background: #fff; }
+    .btn.small { padding: 6px 8px; border-radius: 10px; font-size: 12px; min-height: 30px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.7);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-weight: 750;
+    }
+    .tab.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(118px, 1fr));
+      gap: 10px;
+    }
+    .stat {
+      background: rgba(255,255,255,.82);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .stat .label { color: var(--muted); font-size: 12px; }
+    .stat .value { font-size: 24px; font-weight: 850; margin-top: 3px; }
+
+    main { margin-top: 16px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .grid-month { display: grid; grid-template-columns: minmax(360px, 1.05fr) minmax(420px, 1.35fr); gap: 16px; }
+    .grid-day { display: grid; gap: 16px; }
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .panel-title { font-weight: 850; }
+    .panel-subtitle { color: var(--muted); font-size: 13px; }
+    .panel-body { padding: 14px; }
+
+    .calendar { padding: 14px; }
+    .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; width: 100%; }
+    .weekday { text-align: center; color: var(--muted); font-size: 12px; padding-bottom: 4px; min-width: 0; }
+    .day {
+      min-height: 92px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      min-width: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+    .day.other { opacity: .38; }
+    .day.today { border-color: var(--brand); }
+    .day.selected { background: var(--brand-soft); border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+    .day-number { font-weight: 850; font-size: 14px; }
+    .badges { display: grid; gap: 4px; }
+    .badge {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+      font-size: 12px;
+      padding: 3px 6px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .badge span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .badge b { flex: 0 0 auto; }
+    .badge.in { background: var(--brand-soft); color: #1e40af; }
+    .badge.out { background: var(--done-soft); color: #047857; }
+    .badge.time { background: var(--warn-soft); color: #92400e; }
+
+    .forms { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .inline-plan-form { display: grid; grid-template-columns: minmax(190px, 1.5fr) minmax(140px, .9fr) minmax(110px, .7fr) minmax(110px, .7fr) minmax(150px, 1fr) auto; gap: 10px; align-items: end; }
+    .schedule-plan-panel { margin-bottom: 14px; }
+    .plan-card { border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 12px; }
+    .plan-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .plan-title { font-weight:850; }
+    .form-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .form-card h3 { margin: 0 0 2px; font-size: 15px; }
+    .field { display: grid; gap: 5px; }
+    label { font-size: 12px; color: var(--muted); }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      min-height: 38px;
+    }
+    textarea { min-height: 68px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+    .time24-input {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+    }
+    .time24-input::placeholder { color: #94a3b8; }
+    .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .three-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    .list { display: grid; gap: 9px; }
+    .task-card, .done-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 11px;
+      display: grid;
+      gap: 8px;
+    }
+    .task-card.done-state { background: #fbfffd; border-color: #bbf7d0; }
+    .task-top, .done-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .task-title, .done-title { font-weight: 800; word-break: break-word; }
+    .meta { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 12px; }
+    .pill { border-radius: 999px; padding: 3px 7px; background: var(--soft); color: var(--muted); }
+    .pill.brand { background: var(--brand-soft); color: #1e40af; }
+    .pill.done { background: var(--done-soft); color: #047857; }
+    .pill.warn { background: var(--warn-soft); color: #92400e; }
+    .pill.danger { background: var(--danger-soft); color: #991b1b; }
+    .note { color: var(--muted); font-size: 13px; white-space: pre-wrap; }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .complete-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .complete-date-select { width: auto; min-width: 150px; min-height: 32px; padding: 6px 8px; font-size: 13px; }
+    .timer-date-control { display: grid; gap: 4px; min-width: 150px; }
+    .timer-date-control label { font-size: 12px; color: var(--muted); font-weight: 800; }
+    .timer-date-control select { min-height: 34px; padding: 6px 8px; font-size: 13px; }
+    .empty { color: var(--muted); font-size: 14px; padding: 18px; text-align: center; background: #fafafa; border: 1px dashed var(--line); border-radius: 14px; }
+
+    .active-timer {
+      display: none;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 16px;
+      padding: 12px;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .active-timer.show { display: flex; }
+    .timer-clock { font-variant-numeric: tabular-nums; font-size: 24px; font-weight: 900; color: #9a3412; }
+
+    .day-jump-panel { margin-bottom: 16px; position: relative; z-index: 2000; overflow: visible; }
+    .day-jump-panel .panel-head { overflow: visible; }
+    .date-jump-control { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; position: relative; z-index: 2001; }
+    .date-picker { position: relative; min-width: 240px; display: grid; gap: 6px; z-index: 2002; }
+    .date-picker label { font-size: 12px; color: var(--muted); font-weight: 800; }
+    .date-picker-toggle { min-width: 240px; justify-content: space-between; }
+    .mini-calendar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: auto;
+      width: 320px;
+      max-width: calc(100vw - 16px);
+      max-height: min(460px, calc(100vh - 24px));
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 24px 80px rgba(15,23,42,.28);
+      padding: 12px;
+      z-index: 2147483000;
+    }
+    .mini-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .mini-cal-title { font-weight: 850; }
+    .mini-weekdays, .mini-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .mini-weekday { text-align: center; color: var(--muted); font-size: 12px; font-weight: 800; padding: 4px 0; }
+    .mini-day {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      min-height: 36px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .mini-day.other { color: #cbd5e1; background: #f8fafc; }
+    .mini-day.today { border-color: rgba(37,99,235,.55); }
+    .mini-day.selected { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .timeline-wrap { padding: 14px; overflow-x: auto; }
+    .timeline-legend { display: grid; grid-template-columns: 1fr 92px 1fr; gap: 8px; align-items: center; margin-bottom: 10px; min-width: 620px; }
+    .timeline-legend .left { text-align: right; color: #1d4ed8; font-weight: 850; }
+    .timeline-legend .center { text-align: center; color: var(--muted); font-size: 12px; font-weight: 850; }
+    .timeline-legend .right { text-align: left; color: #047857; font-weight: 850; }
+    .split-timeline {
+      position: relative;
+      min-height: 540px;
+      min-width: 620px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(to bottom, rgba(229,231,235,.58) 1px, transparent 1px);
+      background-size: 100% 48px;
+      overflow: hidden;
+    }
+    .split-timeline::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 3px;
+      transform: translateX(-50%);
+      background: rgba(100,116,139,.45);
+    }
+    .hour-label {
+      position: absolute;
+      left: calc(50% - 30px);
+      width: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      transform: translateY(-8px);
+      background: rgba(255,255,255,.92);
+      border-radius: 999px;
+      padding: 1px 0;
+      z-index: 2;
+    }
+    .block {
+      position: absolute;
+      min-height: 24px;
+      border-radius: 12px;
+      padding: 6px 8px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(15,23,42,.08);
+      z-index: 3;
+    }
+    .block.editable-todo-block { min-height: 58px; }
+    .block-actions { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+    .block-actions .btn { min-height:22px; padding:4px 6px; border-radius:8px; font-size:11px; background:rgba(255,255,255,.88); }
+    .block-actions .btn.danger { background:rgba(255,255,255,.92); }
+    .block.side-todo { left: 10px; right: calc(50% + 48px); border: 1px solid rgba(37,99,235,.38); background: rgba(219,234,254,.95); }
+    .block.side-todo.done-planned { border-color: rgba(100,116,139,.3); background: rgba(241,245,249,.95); }
+    .block.side-done { left: calc(50% + 48px); right: 10px; border: 1px solid rgba(5,150,105,.35); background: rgba(209,250,229,.95); }
+    .block.side-done.direct { border-color: rgba(37,99,235,.32); background: rgba(219,234,254,.95); }
+    .block.side-done.partial { border-color: rgba(217,119,6,.35); background: rgba(254,243,199,.95); }
+    .empty-timeline {
+      position: absolute;
+      top: 16px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      color: var(--muted);
+      padding: 12px;
+      background: rgba(255,255,255,.85);
+      font-size: 13px;
+      z-index: 3;
+    }
+    .empty-timeline.left { left: 10px; right: calc(50% + 48px); }
+    .empty-timeline.right { left: calc(50% + 48px); right: 10px; }
+    .block-title { font-size: 12px; font-weight: 850; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .block-time { font-size: 11px; color: var(--muted); }
+
+    .chart { display: grid; gap: 8px; }
+    .bar-row { display: grid; grid-template-columns: minmax(96px, 140px) 1fr 56px; gap: 8px; align-items: center; font-size: 13px; }
+    .cat-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 999px; flex: 0 0 auto; }
+    .cat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { height: 12px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--brand); border-radius: 999px; }
+    .bar-fill.done { background: var(--done); }
+
+
+    .category-color-list { display: grid; gap: 8px; }
+    .category-color-row {
+      display: grid;
+      grid-template-columns: 1fr 64px;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 8px 10px;
+    }
+    .category-color-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 750; }
+    .category-color-name .cat-name { white-space: normal; }
+    input[type="color"] {
+      min-height: 34px;
+      padding: 2px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .data-tools { display: grid; gap: 12px; }
+    .help { color: var(--muted); font-size: 13px; }
+    .hidden { display: none !important; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483600;
+      background: rgba(15, 23, 42, .42);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: max(18px, env(safe-area-inset-top, 0px)) 12px 18px;
+      overflow-y: auto;
+    }
+    .modal {
+      width: min(560px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 24px 90px rgba(15,23,42,.28);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .modal-title { font-weight: 850; font-size: 16px; }
+
+    @media (max-width: 1160px) {
+      .grid-month, .grid-day, .grid-two { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+    }
+    @media (max-width: 700px) {
+      .app { width: min(100% - 16px, 1460px); margin-top: 8px; }
+      header { border-radius: 18px; padding: 12px; }
+      .stats { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+      .forms { grid-template-columns: 1fr; }
+      .inline-plan-form { grid-template-columns: 1fr; }
+      .calendar { padding: 10px; overflow-x: auto; }
+      .weekdays, .days { min-width: 650px; }
+      .day { min-height: 86px; }
+      .two-cols, .three-cols { grid-template-columns: 1fr; }
+      .mini-calendar { width: min(320px, calc(100vw - 16px)); }
+      .timeline-legend, .split-timeline { min-width: 560px; }
+      .btn { min-height: 38px; }
+    }
+
+
+    /* Cloud sync */
+    .sync-panel { margin-bottom: 14px; }
+    .sync-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .sync-auth-box, .sync-status-box {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+    }
+    .sync-auth-fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .sync-status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+      font-weight: 750;
+    }
+    .sync-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #94a3b8;
+      flex: 0 0 auto;
+    }
+    .sync-dot.ok { background: var(--done); }
+    .sync-dot.busy { background: var(--warn); }
+    .sync-dot.error { background: var(--danger); }
+    .sync-meta { color: var(--muted); font-size: 12px; margin-top: 6px; word-break: break-word; }
+    .sync-user { font-size: 13px; margin-top: 10px; }
+    .sync-config-warning {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--warn-soft);
+      color: #92400e;
+      font-size: 13px;
+    }
+    .sync-config-warning.show { display: block; }
+    @media (max-width: 760px) {
+      .sync-grid, .sync-auth-fields { grid-template-columns: 1fr; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <div>
+          <h1>月度任务 + 时间轴 Todo/Done</h1>
+          <div class="subtitle">按“收到日期”统计新增任务；计划时间块可安排到任意日期，时间轴左右对照计划 Todo 与实际 Done。</div>
+        </div>
+        <div class="row">
+          <button class="btn" id="prevDay">← 前一天</button>
+          <button class="btn" id="prevMonth">← 上月</button>
+          <div class="month-title" id="monthTitle"></div>
+          <button class="btn" id="nextMonth">下月 →</button>
+          <button class="btn" id="nextDay">后一天 →</button>
+          <button class="btn primary" id="todayBtn">今天</button>
+        </div>
+      </div>
+
+      <div class="topbar">
+        <div class="tabs">
+          <button class="tab active" data-tab="month">月度追踪</button>
+          <button class="tab" data-tab="day">每日时间轴</button>
+          <button class="tab" data-tab="backlog">未完成任务池</button>
+          <button class="tab" data-tab="completed">已完成任务池</button>
+          <button class="tab" data-tab="data">数据/备份</button>
+        </div>
+        <div class="panel-subtitle" id="selectedDateLabel"></div>
+      </div>
+
+      <div class="active-timer" id="activeTimerBox">
+        <div>
+          <div class="panel-subtitle">正在计时</div>
+          <div class="task-title" id="activeTimerTitle"></div>
+        </div>
+        <div class="timer-clock" id="activeTimerClock">00:00:00</div>
+        <div class="timer-date-control">
+          <label for="activeTimerDateSelect">记录日期</label>
+          <select id="activeTimerDateSelect"></select>
+        </div>
+        <div class="actions">
+          <button class="btn warn" id="pauseContinueBtn">今天继续</button>
+          <button class="btn warn" id="timerUnfinishedBtn">任务未完成</button>
+          <button class="btn done" id="finishTimerBtn">完成任务</button>
+          <button class="btn danger" id="cancelTimerBtn">取消计时</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <main>
+      <section class="view active" id="view-month">
+        <div class="grid-month">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">月历</div>
+                <div class="panel-subtitle">一周以周一开始</div>
+              </div>
+            </div>
+            <div class="calendar">
+              <div class="weekdays" id="weekdays"></div>
+              <div class="days" id="days"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="dayDetailTitle">每日详情</div>
+                <div class="panel-subtitle">新增任务保留在收到日期；计划执行日期可另外安排。</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="forms">
+                <form class="form-card" id="addTaskForm">
+                  <h3>+ 新增收到的任务</h3>
+                  <div class="field"><label>任务名称</label><input id="taskTitle" required placeholder="例如：回复客户邮件" /></div>
+                  <div class="two-cols">
+                    <div class="field"><label>收到日期</label><input type="date" id="taskReceivedDate" required /></div>
+                    <div class="field"><label>类别</label><select id="taskCategory"></select></div>
+                  </div>
+                  <div class="three-cols">
+                    <div class="field"><label>优先级</label><select id="taskPriority"><option value="none">无</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></div>
+                    <div class="field"><label>初始计划开始</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="taskStart" /></div>
+                    <div class="field"><label>初始计划结束</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="taskEnd" /></div>
+                  </div>
+                  <div class="field"><label>备注</label><textarea id="taskNote" placeholder="可选"></textarea></div>
+                  <button class="btn primary" type="submit">添加任务</button>
+                </form>
+
+                <form class="form-card" id="addDoneForm">
+                  <h3>+ 直接记录任务 / 时间块</h3>
+                  <div class="field"><label>完成内容</label><input id="doneTitle" required placeholder="例如：临时处理 CRA letter" /></div>
+                  <div class="two-cols">
+                    <div class="field"><label>完成日期</label><input type="date" id="doneDate" required /></div>
+                    <div class="field"><label>类别</label><select id="doneCategory"></select></div>
+                  </div>
+                  <div class="three-cols">
+                    <div class="field"><label>优先级</label><select id="donePriority"><option value="none">无</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></div>
+                    <div class="field"><label>开始</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="doneStart" /></div>
+                    <div class="field"><label>结束</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="doneEnd" /></div>
+                  </div>
+                  <div class="field"><label>任务状态</label><select id="doneCompletionState"><option value="complete">任务已完成</option><option value="unfinished">任务未完成</option></select></div>
+                  <div class="field"><label>备注</label><textarea id="doneNote" placeholder="可选"></textarea></div>
+                  <div class="actions">
+                    <button class="btn done" type="submit">记录</button>
+                    <button class="btn" type="button" id="startDirectTimerBtn">开始计时</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="grid-two" style="margin-top:14px;">
+                <div>
+                  <div class="row" style="margin-bottom:8px;">
+                    <div class="panel-title">当天收到</div>
+                    <div class="panel-subtitle" id="receivedCount"></div>
+                  </div>
+                  <div class="list" id="receivedList"></div>
+                </div>
+                <div>
+                  <div class="row" style="margin-bottom:8px;">
+                    <div class="panel-title">当天完成 / 时间记录</div>
+                    <div class="panel-subtitle" id="doneCount"></div>
+                  </div>
+                  <div class="list" id="doneList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-day">
+        <div class="panel day-jump-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">日期跳转</div>
+              <div class="panel-subtitle">从浮层月历直接跳到任意一天，跨月会自动同步月度统计。</div>
+            </div>
+            <div class="date-jump-control">
+              <div class="date-picker" id="dayJumpPicker">
+                <label>选择日期</label>
+                <button class="btn date-picker-toggle" id="dayJumpToggle" type="button"></button>
+                <div class="mini-calendar hidden" id="dayJumpCalendar">
+                  <div class="mini-cal-head">
+                    <button class="btn small" id="jumpPrevMonth" type="button">‹</button>
+                    <div class="mini-cal-title" id="jumpMonthTitle"></div>
+                    <button class="btn small" id="jumpNextMonth" type="button">›</button>
+                  </div>
+                  <div class="mini-weekdays" id="jumpWeekdays"></div>
+                  <div class="mini-days" id="jumpDays"></div>
+                </div>
+              </div>
+              <button class="btn primary" id="dayJumpToday" type="button">跳到今天</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel schedule-plan-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">安排 Todo 计划时间块</div>
+              <div class="panel-subtitle">从未完成任务中选择任务，安排到指定日期；不会改变任务的收到日期。</div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <form class="inline-plan-form" id="schedulePlanForm">
+              <div class="field"><label>未完成任务</label><select id="planTaskSelect" required></select></div>
+              <div class="field"><label>计划日期</label><input type="date" id="planDate" required /></div>
+              <div class="field"><label>计划开始</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="planStart" required /></div>
+              <div class="field"><label>计划结束</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="planEnd" required /></div>
+              <div class="field"><label>备注</label><input id="planNote" placeholder="可选" /></div>
+              <button class="btn primary" type="submit">安排计划</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="grid-day">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">计划 Todo / 实际 Done 时间轴</div>
+                <div class="panel-subtitle">同一条时间轴左右对照：左侧为计划 Todo，右侧为实际 Done / 时间块。</div>
+              </div>
+            </div>
+            <div class="timeline-wrap">
+              <div class="timeline-legend">
+                <div class="left">计划 Todo</div>
+                <div class="center">时间</div>
+                <div class="right">实际 Done</div>
+              </div>
+              <div class="split-timeline" id="combinedTimeline"></div>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">当天计划 Todo 列表</div>
+                  <div class="panel-subtitle" id="plannedTodoCount">显示安排到选中日期的计划时间块。</div>
+                </div>
+              </div>
+              <div class="panel-body"><div class="list" id="todayTodoList"></div></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">当天 Done / 时间块列表</div>
+                  <div class="panel-subtitle" id="dailyMinutes"></div>
+                </div>
+              </div>
+              <div class="panel-body"><div class="list" id="timelineDoneList"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-backlog">
+        <div class="grid-two">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">未完成任务池</div>
+                <div class="panel-subtitle">可把以前收到的任务安排计划、计时或完成到指定日期。</div>
+              </div>
+            </div>
+            <div class="panel-body"><div class="list" id="backlogList"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">类别统计</div>
+                <div class="panel-subtitle">按本月 done 的类别统计时间。</div>
+              </div>
+            </div>
+            <div class="panel-body"><div class="chart" id="categoryChart"></div></div>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="view" id="view-completed">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">已完成任务池</div>
+              <div class="panel-subtitle" id="completedTaskCount">只显示由已有 Todo 正式完成的任务，不包含临时 Done。</div>
+            </div>
+          </div>
+          <div class="panel-body"><div class="list" id="completedTaskList"></div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-data">
+        <div class="panel sync-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">跨设备自动同步</div>
+              <div class="panel-subtitle">同一账号在 iPhone、iPad 和电脑登录后，任务、计划、Done、类别设置和计时状态会自动同步。</div>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="sync-grid">
+              <div class="sync-auth-box">
+                <div class="panel-title" style="font-size:15px;">同步账号</div>
+                <div class="sync-auth-fields">
+                  <div class="field"><label>邮箱</label><input type="email" id="syncEmail" autocomplete="email" placeholder="name@example.com" /></div>
+                  <div class="field"><label>密码</label><input type="password" id="syncPassword" autocomplete="current-password" placeholder="至少 6 位" /></div>
+                </div>
+                <div class="actions" style="margin-top:10px;">
+                  <button class="btn primary" type="button" id="syncLoginBtn">登录</button>
+                  <button class="btn" type="button" id="syncRegisterBtn">注册同步账号</button>
+                  <button class="btn" type="button" id="syncLogoutBtn" disabled>退出登录</button>
+                </div>
+                <div class="sync-user" id="syncUserLabel">尚未登录</div>
+                <div class="sync-config-warning" id="syncConfigWarning">云同步尚未配置。请先按 ZIP 内的 FIREBASE_SETUP.md 完成一次 Firebase 设置，再重新上传 GitHub。</div>
+              </div>
+              <div class="sync-status-box">
+                <div class="sync-status-line"><span class="sync-dot" id="syncStatusDot"></span><span id="syncStatusText">本地模式</span></div>
+                <div class="sync-meta" id="syncStatusMeta">未登录时，数据继续保存在本机。</div>
+                <div class="actions" style="margin-top:12px;">
+                  <button class="btn" type="button" id="syncNowBtn" disabled>立即同步</button>
+                </div>
+                <div class="help" style="margin-top:10px;">首次在第一台设备登录时，如果云端为空，会自动上传本机数据；之后在其他设备用同一账号登录，会自动读取云端数据并持续同步。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-two">
+          <div class="panel">
+            <div class="panel-head"><div><div class="panel-title">备份 / 导入</div><div class="panel-subtitle">数据始终保留本机副本；登录云同步后会同时保存到云端。</div></div></div>
+            <div class="panel-body data-tools">
+              <div class="actions">
+                <button class="btn" id="exportJsonBtn">导出 JSON 备份</button>
+                <button class="btn" id="exportCsvBtn">导出 CSV</button>
+                <label class="btn" for="importJsonInput">导入 JSON</label>
+                <input class="hidden" type="file" id="importJsonInput" accept="application/json,.json" />
+              </div>
+              <div class="help">JSON 仍作为手动备份工具。即使开启云同步，也建议偶尔导出备份；导入会覆盖当前本机数据，并在登录状态下同步到云端。</div>
+              <div class="field">
+                <label>任务类别下拉菜单选项</label>
+                <textarea id="categoriesInput" placeholder="每行一个类别，例如：
+工作
+生活
+家庭"></textarea>
+              </div>
+              <div class="actions">
+                <button class="btn primary" type="button" id="saveCategoriesBtn">保存类别选项</button>
+                <button class="btn" type="button" id="resetCategoriesBtn">恢复默认类别</button>
+              </div>
+              <div class="field">
+                <label>类别颜色</label>
+                <div class="category-color-list" id="categoryColorControls"></div>
+                <div class="help">颜色会用于“类别统计”的圆点和进度条。</div>
+              </div>
+              <div class="actions">
+                <button class="btn primary" type="button" id="saveCategoryColorsBtn">保存类别颜色</button>
+                <button class="btn" type="button" id="resetCategoryColorsBtn">恢复默认颜色</button>
+              </div>
+              <button class="btn danger" id="clearDataBtn">清空本机数据</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><div class="panel-title">使用规则</div><div class="panel-subtitle">合并后的统计逻辑</div></div></div>
+            <div class="panel-body help">
+              <p><b>新增任务</b>：按收到日期进入月度“新增”。完成以后，原任务仍保留在收到日。</p>
+              <p><b>完成任务</b>：只有从已有 Todo/任务完成的项目会计入月度“本月完成”；直接记录的临时 Done 只计入“临时 Done”和时间块，不计入“本月完成”。</p>
+              <p><b>未完成</b>：月度统计中的“未完成”按当前月月末口径计算，包含以前月份遗留、且截至该月末仍未完成的任务。</p>
+              <p><b>计划时间块</b>：收到日期只用于统计“新增”；计划日期可以单独安排到任意一天。同一个未完成任务可以安排多个计划时间块。</p>
+              <p><b>时间轴</b>：同一条时间轴左右对照。左侧显示安排到当天的计划 Todo 时间块，右侧显示实际 Done / 时间块。</p><p><b>今天继续</b>：暂停计时并生成一段 time block，但任务仍保持未完成，适合当天还会继续做。</p>
+              <p><b>任务未完成</b>：暂停计时并生成一段 time block，但不把任务标记完成，适合今天不再继续或只是记录阶段性工作。</p>
+              <p><b>任务总耗时</b>：正式任务完成后，会自动累计该任务所有已记录的实际时间块，包括多次计时、今天继续和任务未完成产生的阶段性记录。</p>
+              <p><b>直接记录任务 / 时间块</b>：适合补记临时任务。可以选择“任务已完成”或“任务未完成”；未完成只记录时间块，不计入完成数量。</p>
+              <p><b>默认值</b>：类别默认为“工作”，下拉菜单可选择“＋自定义”，也可以在“数据/备份”里维护类别选项和类别颜色；优先级默认为“无”，月历一周从周一开始。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+
+    <div class="modal-backdrop hidden" id="taskEditModal" role="dialog" aria-modal="true" aria-labelledby="taskEditTitle">
+      <form class="modal" id="editTaskForm">
+        <div class="modal-head">
+          <div class="modal-title" id="taskEditTitle">编辑任务</div>
+          <button class="btn small" type="button" id="closeTaskEditBtn">关闭</button>
+        </div>
+        <input type="hidden" id="editTaskId" />
+        <div class="field"><label>任务名称</label><input id="editTaskTitle" required /></div>
+        <div class="two-cols">
+          <div class="field"><label>收到日期</label><input type="date" id="editTaskReceivedDate" required /></div>
+          <div class="field"><label>类别</label><select id="editTaskCategory"></select></div>
+        </div>
+        <div class="two-cols">
+          <div class="field"><label>优先级</label><select id="editTaskPriority"><option value="none">无</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></div>
+          <div class="field"><label>状态</label><select id="editTaskStatus"><option value="open">未完成</option><option value="done">已完成</option></select></div>
+        </div>
+        <div class="two-cols">
+          <div class="field"><label>完成日期</label><input type="date" id="editTaskCompletedDate" /></div>
+          <div class="field"><label>备注</label><input id="editTaskNote" /></div>
+        </div>
+        <div class="two-cols">
+          <div class="field"><label>旧任务自带计划开始</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="editTaskStart" /></div>
+          <div class="field"><label>旧任务自带计划结束</label><input type="text" class="time24-input" inputmode="numeric" autocomplete="off" placeholder="HH:MM" id="editTaskEnd" /></div>
+        </div>
+        <div class="help">新的跨天计划建议在“每日时间轴 → 安排 Todo 计划时间块”里添加。时间使用 24 小时制，例如 09:30、17:45。这里的旧计划时间仅用于兼容早期数据。</div>
+        <div class="actions">
+          <button class="btn primary" type="submit">保存修改</button>
+          <button class="btn" type="button" id="cancelTaskEditBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_KEY = 'monthlyTimelineCombinedApp.v1';
+  const minutePx = 0.8; // 60 min = 48px
+  const dayStart = 6 * 60;
+  const dayEnd = 24 * 60;
+
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayISO = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  };
+  const nowTime = () => {
+    const d = new Date();
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  function normalizeTimeText(value) {
+    let raw = String(value || '').trim();
+    if (!raw) return '';
+    raw = raw.replace(/[：.]/g, ':').replace(/\s+/g, '');
+    const compact = raw.match(/^(\d{3,4})$/);
+    if (compact) {
+      const digits = compact[1];
+      raw = `${digits.slice(0, -2)}:${digits.slice(-2)}`;
+    }
+    const m = raw.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+    if (!m) return '';
+    const h = Number(m[1]);
+    const min = m[2] === undefined ? 0 : Number(m[2]);
+    if (!Number.isInteger(h) || !Number.isInteger(min) || h < 0 || h > 23 || min < 0 || min > 59) return '';
+    return `${pad(h)}:${pad(min)}`;
+  }
+  function readTimeInput(id, label, required = false) {
+    const el = $(id);
+    if (!el) return '';
+    const raw = String(el.value || '').trim();
+    if (!raw) {
+      if (required) {
+        alert(`${label} 请使用 24 小时格式，例如 09:30 或 17:45。`);
+        el.focus();
+        return null;
+      }
+      return '';
+    }
+    const normalized = normalizeTimeText(raw);
+    if (!normalized) {
+      alert(`${label} 请使用 24 小时格式，例如 09:30 或 17:45。`);
+      el.focus();
+      return null;
+    }
+    el.value = normalized;
+    return normalized;
+  }
+  function initTime24Inputs() {
+    document.querySelectorAll('.time24-input').forEach(input => {
+      input.setAttribute('maxlength', '5');
+      input.setAttribute('aria-label', `${input.closest('.field')?.querySelector('label')?.textContent || '时间'}，24小时制，格式HH:MM`);
+      input.addEventListener('blur', () => {
+        const normalized = normalizeTimeText(input.value);
+        if (normalized) input.value = normalized;
+      });
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/[^0-9:：.]/g, '');
+      });
+    });
+  }
+  const id = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+  const priorityLabel = { none: '无', high: '高', medium: '中', low: '低' };
+  const priorityClass = { none: '', high: 'danger', medium: 'warn', low: 'brand' };
+  const DEFAULT_CATEGORIES = ['工作', '生活', '家庭', '财务', '学习', '其他'];
+  const CUSTOM_CATEGORY_VALUE = '__custom_category__';
+  const CATEGORY_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2', '#ca8a04', '#db2777', '#475569', '#16a34a', '#9333ea', '#ea580c'];
+
+  let state = loadState();
+  let timerInterval = null;
+  let jumpMonth = state.selectedDate.slice(0,7) + '-01';
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      return {
+        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+        dones: Array.isArray(parsed.dones) ? parsed.dones : [],
+        plans: Array.isArray(parsed.plans) ? parsed.plans : [],
+        categories: normalizeCategories(parsed.categories, parsed.tasks, parsed.dones, parsed.plans),
+        categoryColors: normalizeCategoryColors(parsed.categoryColors, normalizeCategories(parsed.categories, parsed.tasks, parsed.dones, parsed.plans)),
+        selectedDate: parsed.selectedDate || todayISO(),
+        currentMonth: parsed.currentMonth || todayISO().slice(0,7) + '-01',
+        activeTimer: parsed.activeTimer || null
+      };
+    } catch(e) {
+      return defaultState();
+    }
+  }
+  function defaultState() {
+    const t = todayISO();
+    return { tasks: [], dones: [], plans: [], categories: DEFAULT_CATEGORIES.slice(), categoryColors: normalizeCategoryColors({}, DEFAULT_CATEGORIES), selectedDate: t, currentMonth: t.slice(0,7) + '-01', activeTimer: null };
+  }
+  function saveLocalOnly() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function save() {
+    saveLocalOnly();
+    if (window.TaskCloudSync && typeof window.TaskCloudSync.queuePush === 'function') {
+      window.TaskCloudSync.queuePush();
+    }
+  }
+
+  function getCloudPayload() {
+    return {
+      schemaVersion: 1,
+      tasks: Array.isArray(state.tasks) ? state.tasks : [],
+      dones: Array.isArray(state.dones) ? state.dones : [],
+      plans: Array.isArray(state.plans) ? state.plans : [],
+      categories: Array.isArray(state.categories) ? state.categories : DEFAULT_CATEGORIES.slice(),
+      categoryColors: state.categoryColors && typeof state.categoryColors === 'object' ? state.categoryColors : {},
+      activeTimer: state.activeTimer || null
+    };
+  }
+
+  function applyCloudPayload(parsed) {
+    if (!parsed || typeof parsed !== 'object') return false;
+    const t = todayISO();
+    const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+    const dones = Array.isArray(parsed.dones) ? parsed.dones : [];
+    const plans = Array.isArray(parsed.plans) ? parsed.plans : [];
+    const categories = normalizeCategories(parsed.categories, tasks, dones, plans);
+    state = {
+      tasks,
+      dones,
+      plans,
+      categories,
+      categoryColors: normalizeCategoryColors(parsed.categoryColors, categories),
+      selectedDate: t,
+      currentMonth: `${t.slice(0,7)}-01`,
+      activeTimer: parsed.activeTimer || null
+    };
+    jumpMonth = state.currentMonth;
+    saveLocalOnly();
+    render();
+    return true;
+  }
+
+  window.TaskAppBridge = {
+    getCloudPayload,
+    applyCloudPayload,
+    getLocalSummary: () => ({
+      tasks: (state.tasks || []).length,
+      dones: (state.dones || []).length,
+      plans: (state.plans || []).length
+    })
+  };
+
+  function normalizeCategories(list, tasks = [], dones = [], plans = []) {
+    const out = [];
+    const add = v => {
+      const x = String(v || '').trim();
+      if (x && !out.includes(x)) out.push(x);
+    };
+    DEFAULT_CATEGORIES.forEach(add);
+    (Array.isArray(list) ? list : []).forEach(add);
+    (Array.isArray(tasks) ? tasks : []).forEach(t => add(t.category));
+    (Array.isArray(dones) ? dones : []).forEach(d => add(d.category));
+    (Array.isArray(plans) ? plans : []).forEach(p => add(p.category));
+    return out.length ? out : DEFAULT_CATEGORIES.slice();
+  }
+  function normalizeCategoryColors(map = {}, categories = []) {
+    const out = {};
+    const source = (map && typeof map === 'object') ? map : {};
+    const cats = normalizeCategories(categories);
+    cats.forEach(cat => {
+      const color = String(source[cat] || '').trim();
+      out[cat] = /^#[0-9a-fA-F]{6}$/.test(color) ? color : defaultColorForCategory(cat);
+    });
+    return out;
+  }
+  function defaultColorForCategory(category) {
+    const text = String(category || '工作');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length];
+  }
+  function allCategories(extra = '') {
+    return normalizeCategories([...(state.categories || []), extra], state.tasks, state.dones, state.plans);
+  }
+  function cleanCategoryValue(value, fallback = '工作') {
+    const v = String(value || '').trim();
+    if (!v || v === CUSTOM_CATEGORY_VALUE) return fallback;
+    return v;
+  }
+  function selectedCategory(selectId, fallback = '工作') {
+    return cleanCategoryValue($(selectId)?.value, fallback);
+  }
+  function categoryOptions(selected = '工作') {
+    const current = cleanCategoryValue(selected, '工作');
+    const opts = allCategories(current).map(c => `<option value="${escapeHtml(c)}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+    return opts + `<option value="${CUSTOM_CATEGORY_VALUE}">＋自定义</option>`;
+  }
+  function setCategorySelect(id, selected = '工作') {
+    const el = $(id);
+    if (!el) return;
+    const current = cleanCategoryValue(selected || el.value, '工作');
+    el.innerHTML = categoryOptions(current);
+    el.value = allCategories(current).includes(current) ? current : '工作';
+    el.dataset.lastValue = el.value;
+  }
+  function renderCategoryControls() {
+    setCategorySelect('taskCategory', selectedCategory('taskCategory', '工作'));
+    setCategorySelect('doneCategory', selectedCategory('doneCategory', '工作'));
+    setCategorySelect('editTaskCategory', selectedCategory('editTaskCategory', '工作'));
+    const input = $('categoriesInput');
+    if (input) input.value = (state.categories || DEFAULT_CATEGORIES).join('\n');
+    renderCategoryColorControls();
+  }
+  function renderCategoryColorControls() {
+    const box = $('categoryColorControls');
+    if (!box) return;
+    const cats = allCategories();
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, cats);
+    box.innerHTML = cats.map(cat => {
+      const color = colorForCategory(cat);
+      return `<div class="category-color-row">
+        <div class="category-color-name"><span class="cat-dot" style="background:${color}"></span><span class="cat-name">${escapeHtml(cat)}</span></div>
+        <input type="color" value="${escapeHtml(color)}" data-category-color="${escapeHtml(cat)}" aria-label="${escapeHtml(cat)}颜色" />
+      </div>`;
+    }).join('');
+  }
+  function saveCategoryColors() {
+    if (!state.categoryColors) state.categoryColors = {};
+    document.querySelectorAll('[data-category-color]').forEach(input => {
+      const cat = input.dataset.categoryColor;
+      if (cat) state.categoryColors[cat] = input.value || defaultColorForCategory(cat);
+    });
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, allCategories());
+    save(); render();
+  }
+  function resetCategoryColors() {
+    state.categoryColors = normalizeCategoryColors({}, allCategories());
+    save(); render();
+  }
+  function handleCategorySelectChange(el) {
+    if (!el) return;
+    if (el.value !== CUSTOM_CATEGORY_VALUE) {
+      el.dataset.lastValue = cleanCategoryValue(el.value, '工作');
+      return;
+    }
+    const fallback = cleanCategoryValue(el.dataset.lastValue, '工作');
+    const custom = prompt('请输入自定义类别名称');
+    const value = String(custom || '').trim();
+    if (!value) {
+      setCategorySelect(el.id, fallback);
+      return;
+    }
+    state.categories = normalizeCategories([...(state.categories || []), value], state.tasks, state.dones, state.plans);
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, state.categories);
+    save();
+    const taskVal = el.id === 'taskCategory' ? value : selectedCategory('taskCategory', '工作');
+    const doneVal = el.id === 'doneCategory' ? value : selectedCategory('doneCategory', '工作');
+    const editVal = el.id === 'editTaskCategory' ? value : selectedCategory('editTaskCategory', '工作');
+    setCategorySelect('taskCategory', taskVal);
+    setCategorySelect('doneCategory', doneVal);
+    setCategorySelect('editTaskCategory', editVal);
+    const input = $('categoriesInput');
+    if (input) input.value = (state.categories || DEFAULT_CATEGORIES).join('\n');
+  }
+  function attachCategorySelect(selectId) {
+    const el = $(selectId);
+    if (el) el.addEventListener('change', () => handleCategorySelectChange(el));
+  }
+  function colorForCategory(category) {
+    const cat = cleanCategoryValue(category, '工作');
+    if (!state.categoryColors) state.categoryColors = normalizeCategoryColors({}, allCategories());
+    if (!state.categoryColors[cat]) state.categoryColors[cat] = defaultColorForCategory(cat);
+    return state.categoryColors[cat];
+  }
+  function saveCategorySettings() {
+    const raw = $('categoriesInput')?.value || '';
+    const items = raw.split(/[\n,，、;；]+/).map(x => x.trim()).filter(Boolean);
+    state.categories = normalizeCategories(items, state.tasks, state.dones, state.plans);
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, state.categories);
+    save(); render();
+  }
+  function resetCategorySettings() {
+    state.categories = DEFAULT_CATEGORIES.slice();
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, state.categories);
+    save(); render();
+  }
+
+  function parseISODate(s) {
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+  function formatDateCN(s) {
+    const d = parseISODate(s);
+    const names = ['周日','周一','周二','周三','周四','周五','周六'];
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${names[d.getDay()]}`;
+  }
+  function formatDateShort(s) {
+    const d = parseISODate(s);
+    const names = ['周日','周一','周二','周三','周四','周五','周六'];
+    return `${d.getMonth()+1}/${d.getDate()} ${names[d.getDay()]}`;
+  }
+  function dateSelectOptions(selectedDate, extraDates = []) {
+    const selected = selectedDate || state.selectedDate || todayISO();
+    const dates = new Set();
+    const { end } = monthRange((selected || state.currentMonth || todayISO()).slice(0,7) + '-01');
+    for (let day = 1; day <= end.getDate(); day++) {
+      dates.add(`${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(day)}`);
+    }
+    [selected, state.selectedDate, todayISO(), ...extraDates].filter(Boolean).forEach(x => dates.add(x));
+    return Array.from(dates).sort().map(iso => `<option value="${iso}" ${iso === selected ? 'selected' : ''}>${formatDateShort(iso)}</option>`).join('');
+  }
+  function addDays(s, n) {
+    const d = parseISODate(s);
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function monthKey(dateStr) { return dateStr.slice(0,7); }
+  function monthRange(monthStart) {
+    const start = parseISODate(monthStart);
+    const end = new Date(start.getFullYear(), start.getMonth()+1, 0);
+    return { start, end };
+  }
+  function isoFromDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function monthEndISO(monthStart = state.currentMonth) { return isoFromDate(monthRange(monthStart).end); }
+  function taskUnfinishedAsOf(task, cutoffDate) {
+    if (!task || !task.receivedDate || task.receivedDate > cutoffDate) return false;
+    if (!task.completedDate) return !isDoneTask(task);
+    return task.completedDate > cutoffDate;
+  }
+  function tasksUnfinishedAsOfMonthEnd() {
+    const cutoff = monthEndISO(state.currentMonth);
+    return state.tasks.filter(t => taskUnfinishedAsOf(t, cutoff));
+  }
+  function setMonth(dateStr) { state.currentMonth = dateStr.slice(0,7) + '-01'; save(); render(); }
+  function setSelectedDate(dateStr) {
+    state.selectedDate = dateStr;
+    state.currentMonth = dateStr.slice(0,7) + '-01';
+    jumpMonth = state.currentMonth;
+    save(); render();
+  }
+  function timeToMin(t) {
+    if (!t || !/^\d{2}:\d{2}$/.test(t)) return null;
+    const [h,m] = t.split(':').map(Number);
+    return h * 60 + m;
+  }
+  function minToTime(n) {
+    n = Math.max(0, Math.round(n));
+    return `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
+  }
+  function durationBetween(start, end) {
+    const a = timeToMin(start), b = timeToMin(end);
+    if (a == null || b == null) return 0;
+    let diff = b - a;
+    if (diff < 0) diff += 24 * 60;
+    return diff;
+  }
+  function formatMinutes(min) {
+    min = Math.round(Number(min || 0));
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h && m) return `${h}小时${m}分`;
+    if (h) return `${h}小时`;
+    return `${m}分`;
+  }
+  function taskTotalMinutes(taskId) {
+    if (!taskId) return 0;
+    return state.dones
+      .filter(d => d.taskId === taskId)
+      .reduce((sum, d) => sum + Math.max(0, Number(d.durationMin || 0)), 0);
+  }
+  function timerElapsedMs(timer) {
+    return Date.now() - Number(timer.startEpoch || Date.now());
+  }
+  function formatElapsed(ms) {
+    const sec = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+
+  function tasksInMonth() { return state.tasks.filter(t => monthKey(t.receivedDate) === monthKey(state.currentMonth)); }
+  function donesInMonth() { return state.dones.filter(d => monthKey(d.date) === monthKey(state.currentMonth)); }
+  function isDoneTask(task) { return task.status === 'done'; }
+  function isCompletionRecord(done) { return ['task','direct','direct-timer'].includes(done.type || 'direct'); }
+  function isDirectDoneRecord(done) { return ['direct','direct-timer'].includes(done.type || 'direct'); }
+  function tasksCompletedInMonth() {
+    return state.tasks.filter(t => isDoneTask(t) && t.completedDate && monthKey(t.completedDate) === monthKey(state.currentMonth));
+  }
+  function tasksCompletedOnDate(date) {
+    return state.tasks.filter(t => isDoneTask(t) && t.completedDate === date);
+  }
+  function getTask(taskId) { return state.tasks.find(t => t.id === taskId); }
+  function getPlansForDate(date) {
+    const savedPlans = (state.plans || []).filter(p => p.date === date).map(p => {
+      const task = getTask(p.taskId) || {};
+      return {
+        id: p.id, planId: p.id, taskId: p.taskId, title: task.title || p.title || '未命名任务',
+        date: p.date, startTime: p.startTime || '', endTime: p.endTime || '', note: p.note || '',
+        category: task.category || p.category || '工作', priority: task.priority || p.priority || 'none',
+        receivedDate: task.receivedDate || '', completedDate: task.completedDate || '', status: task.status || 'open', legacy: false
+      };
+    });
+    const legacyPlans = state.tasks
+      .filter(t => t.receivedDate === date && (t.startTime || t.endTime))
+      .map(t => ({
+        id: `legacy-${t.id}`, planId: '', taskId: t.id, title: t.title, date: t.receivedDate,
+        startTime: t.startTime || '', endTime: t.endTime || '', note: t.note || '',
+        category: t.category || '工作', priority: t.priority || 'none',
+        receivedDate: t.receivedDate || '', completedDate: t.completedDate || '', status: t.status || 'open', legacy: true
+      }));
+    return savedPlans.concat(legacyPlans);
+  }
+  function getTaskPlans(taskId) { return (state.plans || []).filter(p => p.taskId === taskId).sort(sortPlans); }
+
+  function render() {
+    syncFormDates();
+    renderCategoryControls();
+    renderHeader();
+    renderActiveTimer();
+    renderCalendar();
+    renderDayDetails();
+    renderTimelineView();
+    renderBacklog();
+    renderCompletedPool();
+    renderPlanTaskSelect();
+    renderDayJumpCalendar();
+  }
+
+  function syncFormDates() {
+    $('taskReceivedDate').value = state.selectedDate;
+    $('doneDate').value = state.selectedDate;
+    if ($('planDate')) $('planDate').value = state.selectedDate;
+    const toggle = $('dayJumpToggle');
+    if (toggle) toggle.textContent = `${formatDateCN(state.selectedDate)} ▾`;
+  }
+
+  function renderHeader() {
+    const m = parseISODate(state.currentMonth);
+    $('monthTitle').textContent = `${m.getFullYear()}年${m.getMonth()+1}月`;
+    $('selectedDateLabel').textContent = `当前日期：${formatDateCN(state.selectedDate)}`;
+
+    const tm = tasksInMonth();
+    const dm = donesInMonth();
+    const completedTasks = tasksCompletedInMonth();
+    const open = tasksUnfinishedAsOfMonthEnd().length;
+    const direct = dm.filter(isDirectDoneRecord).length;
+    const totalMin = dm.reduce((sum,d) => sum + Number(d.durationMin || 0), 0);
+    const daysInMonth = monthRange(state.currentMonth).end.getDate();
+    const avgIn = tm.length / daysInMonth;
+    const avgOut = completedTasks.length / daysInMonth;
+    const statData = [
+      ['本月新增', tm.length],
+      ['本月完成', completedTasks.length],
+      ['未完成累计', open],
+      ['临时 Done', direct],
+      ['本月时长', formatMinutes(totalMin)],
+      ['日均 新增/完成', `${avgIn.toFixed(1)} / ${avgOut.toFixed(1)}`]
+    ];
+    $('stats').innerHTML = statData.map(([label,value]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
+  }
+
+  function renderCalendar() {
+    const weekdayNames = ['周一','周二','周三','周四','周五','周六','周日'];
+    $('weekdays').innerHTML = weekdayNames.map(w => `<div class="weekday">${w}</div>`).join('');
+    const { start, end } = monthRange(state.currentMonth);
+    const firstDayMondayIndex = (start.getDay() + 6) % 7;
+    const gridStart = new Date(start);
+    gridStart.setDate(start.getDate() - firstDayMondayIndex);
+
+    const cells = [];
+    for (let i=0; i<42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const other = d.getMonth() !== start.getMonth();
+      const today = iso === todayISO();
+      const selected = iso === state.selectedDate;
+      const inCount = state.tasks.filter(t => t.receivedDate === iso).length;
+      const dayRecords = state.dones.filter(x => x.date === iso);
+      const outCount = tasksCompletedOnDate(iso).length;
+      const min = dayRecords.reduce((s,x)=>s+Number(x.durationMin||0),0);
+      cells.push(`<button class="day ${other?'other':''} ${today?'today':''} ${selected?'selected':''}" data-date="${iso}">
+        <div class="day-number">${d.getDate()}</div>
+        <div class="badges">
+          <div class="badge in"><span>新增</span><b>${inCount}</b></div>
+          <div class="badge out"><span>完成</span><b>${outCount}</b></div>
+          <div class="badge time"><span>时长</span><b>${formatMinutes(min)}</b></div>
+        </div>
+      </button>`);
+    }
+    $('days').innerHTML = cells.join('');
+    document.querySelectorAll('.day').forEach(btn => btn.addEventListener('click', () => setSelectedDate(btn.dataset.date)));
+  }
+
+  function renderDayDetails() {
+    $('dayDetailTitle').textContent = formatDateCN(state.selectedDate);
+    const received = state.tasks.filter(t => t.receivedDate === state.selectedDate).sort(sortTasks);
+    const dones = state.dones.filter(d => d.date === state.selectedDate).sort(sortDones);
+    $('receivedCount').textContent = `${received.length} 个`;
+    const completedCount = tasksCompletedOnDate(state.selectedDate).length;
+    const directDoneCount = dones.filter(isDirectDoneRecord).length;
+    $('doneCount').textContent = `正式完成 ${completedCount} 个 / 临时完成 ${directDoneCount} 个 / 记录 ${dones.length} 条`;
+    $('receivedList').innerHTML = received.length ? received.map(taskCard).join('') : `<div class="empty">当天还没有新增任务。</div>`;
+    $('doneList').innerHTML = dones.length ? dones.map(doneCard).join('') : `<div class="empty">当天还没有完成记录。</div>`;
+  }
+
+  function sortTasks(a,b) {
+    const ap = {high:0, medium:1, low:2, none:3}[a.priority || 'none'];
+    const bp = {high:0, medium:1, low:2, none:3}[b.priority || 'none'];
+    return ap - bp || (a.createdAt || '').localeCompare(b.createdAt || '');
+  }
+  function sortTasksForTimeline(a,b) {
+    const at = timeToMin(a.startTime) ?? 9999;
+    const bt = timeToMin(b.startTime) ?? 9999;
+    return at - bt || sortTasks(a,b);
+  }
+  function sortPlans(a,b) {
+    const ad = (a.date || '').localeCompare(b.date || '');
+    if (ad) return ad;
+    const at = timeToMin(a.startTime) ?? 9999;
+    const bt = timeToMin(b.startTime) ?? 9999;
+    return at - bt || (a.title || '').localeCompare(b.title || '');
+  }
+  function sortDones(a,b) {
+    const at = timeToMin(a.startTime) ?? 9999;
+    const bt = timeToMin(b.startTime) ?? 9999;
+    return at - bt || (a.createdAt || '').localeCompare(b.createdAt || '');
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  function taskCard(t) {
+    const active = state.activeTimer && state.activeTimer.taskId === t.id;
+    const p = t.priority || 'none';
+    const pCls = priorityClass[p];
+    const plans = getTaskPlans(t.id);
+    const legacyPlan = (t.startTime || t.endTime) ? [{date:t.receivedDate, startTime:t.startTime || '', endTime:t.endTime || ''}] : [];
+    const planPreview = plans.concat(legacyPlan).slice(0, 2);
+    const planned = planPreview.length ? planPreview.map(p => `<span class="pill">计划 ${escapeHtml(formatDateShort(p.date))} ${escapeHtml(p.startTime || '--:--')}–${escapeHtml(p.endTime || '--:--')}</span>`).join('') + (plans.length + legacyPlan.length > 2 ? `<span class="pill">+${plans.length + legacyPlan.length - 2}</span>` : '') : '';
+    const doneInfo = isDoneTask(t) ? `<span class="pill done">已完成 ${escapeHtml(t.completedDate || '')}</span>` : `<span class="pill brand">未完成</span>`;
+    const totalTimeInfo = isDoneTask(t) ? `<span class="pill warn">总耗时 ${formatMinutes(taskTotalMinutes(t.id))}</span>` : '';
+    return `<div class="task-card ${isDoneTask(t)?'done-state':''}">
+      <div class="task-top">
+        <div>
+          <div class="task-title">${escapeHtml(t.title)}</div>
+          <div class="meta">
+            ${doneInfo}
+            ${totalTimeInfo}
+            <span class="pill">收到 ${escapeHtml(t.receivedDate)}</span>
+            <span class="pill">${escapeHtml(t.category || '工作')}</span>
+            <span class="pill ${pCls}">优先级 ${priorityLabel[p] || '无'}</span>
+            ${planned}
+          </div>
+        </div>
+      </div>
+      ${t.note ? `<div class="note">${escapeHtml(t.note)}</div>` : ''}
+      <div class="actions">
+        ${!isDoneTask(t) ? `<button class="btn small" data-action="start-task" data-id="${t.id}" ${state.activeTimer?'disabled':''}>开始计时</button>
+        <div class="complete-row">
+          <select class="complete-date-select" data-complete-date-for="${t.id}">${dateSelectOptions(state.selectedDate, [t.receivedDate])}</select>
+          <button class="btn small done" data-action="complete-task" data-id="${t.id}">完成到所选日期</button>
+        </div>` : ''}
+        ${isDoneTask(t) ? `<button class="btn small" data-action="reopen-task" data-id="${t.id}">重新打开</button>` : ''}
+        <button class="btn small" data-action="edit-task" data-id="${t.id}">编辑</button>
+        <button class="btn small danger" data-action="delete-task" data-id="${t.id}">删除</button>
+        ${active ? `<span class="pill warn">计时中</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  function planCard(p) {
+    const task = getTask(p.taskId) || {};
+    const status = p.status === 'done' ? `<span class="pill done">已完成 ${escapeHtml(p.completedDate || '')}</span>` : `<span class="pill brand">未完成</span>`;
+    const pKey = p.priority || 'none';
+    const pCls = priorityClass[pKey];
+    const source = p.legacy ? `<span class="pill warn">旧任务计划</span>` : `<span class="pill">计划块</span>`;
+    const actions = p.legacy
+      ? `<button class="btn small" data-action="edit-task" data-id="${p.taskId}">编辑原任务</button>`
+      : `<button class="btn small" data-action="edit-plan" data-id="${p.planId}">编辑计划</button><button class="btn small danger" data-action="delete-plan" data-id="${p.planId}">删除计划</button>`;
+    return `<div class="plan-card">
+      <div class="plan-top">
+        <div>
+          <div class="plan-title">${escapeHtml(p.title)}</div>
+          <div class="meta">
+            ${status}
+            ${source}
+            <span class="pill">计划 ${escapeHtml(formatDateShort(p.date))}</span>
+            <span class="pill done">${escapeHtml(p.startTime || '--:--')}–${escapeHtml(p.endTime || '--:--')}</span>
+            <span class="pill">收到 ${escapeHtml(p.receivedDate || task.receivedDate || '')}</span>
+            <span class="pill">${escapeHtml(p.category || '工作')}</span>
+            <span class="pill ${pCls}">优先级 ${priorityLabel[pKey] || '无'}</span>
+          </div>
+        </div>
+      </div>
+      ${p.note ? `<div class="note">${escapeHtml(p.note)}</div>` : ''}
+      <div class="actions">${actions}</div>
+    </div>`;
+  }
+
+  function doneCard(d) {
+    const typeLabel = d.type === 'partial' ? '今天继续' : (d.type === 'unfinished' ? '任务未完成' : (d.type === 'task' ? '任务完成' : (d.type === 'direct-timer' ? '临时计时' : '直接 Done')));
+    const p = d.priority || 'none';
+    const pCls = priorityClass[p];
+    const time = d.startTime || d.endTime ? `<span class="pill done">${escapeHtml(d.startTime || '--:--')}–${escapeHtml(d.endTime || '--:--')}</span>` : `<span class="pill">无时间段</span>`;
+    const taskTotalInfo = d.type === 'task' && d.taskId ? `<span class="pill warn">该任务累计 ${formatMinutes(taskTotalMinutes(d.taskId))}</span>` : '';
+    return `<div class="done-card">
+      <div class="done-top">
+        <div>
+          <div class="done-title">${escapeHtml(d.title)}</div>
+          <div class="meta">
+            <span class="pill brand">${typeLabel}</span>
+            <span class="pill">${escapeHtml(d.date)}</span>
+            ${time}
+            <span class="pill warn">${formatMinutes(d.durationMin || 0)}</span>
+            ${taskTotalInfo}
+            <span class="pill">${escapeHtml(d.category || '工作')}</span>
+            <span class="pill ${pCls}">优先级 ${priorityLabel[p] || '无'}</span>
+          </div>
+        </div>
+      </div>
+      ${d.note ? `<div class="note">${escapeHtml(d.note)}</div>` : ''}
+      <div class="actions">
+        <button class="btn small" data-action="edit-done" data-id="${d.id}">编辑</button>
+        <button class="btn small danger" data-action="delete-done" data-id="${d.id}">删除</button>
+      </div>
+    </div>`;
+  }
+
+  function renderTimelineView() {
+    const planEntries = getPlansForDate(state.selectedDate).sort(sortPlans);
+    const openPlanCount = planEntries.filter(p => p.status !== 'done').length;
+    $('plannedTodoCount').textContent = `${planEntries.length} 个计划时间块；${openPlanCount} 个对应任务未完成`;
+    $('todayTodoList').innerHTML = planEntries.length ? planEntries.map(planCard).join('') : `<div class="empty">选中日期还没有安排计划时间块。可以在上方从未完成任务中选择任务并安排时间。</div>`;
+
+    const dones = state.dones.filter(d => d.date === state.selectedDate).sort(sortDones);
+    const totalMin = dones.reduce((s,d)=>s+Number(d.durationMin||0),0);
+    const completedCount = tasksCompletedOnDate(state.selectedDate).length;
+    const directDoneCount = dones.filter(isDirectDoneRecord).length;
+    $('dailyMinutes').textContent = `正式完成 ${completedCount} 个；临时完成 ${directDoneCount} 个；时间块总时长 ${formatMinutes(totalMin)}`;
+    $('timelineDoneList').innerHTML = dones.length ? dones.map(doneCard).join('') : `<div class="empty">还没有 done 或时间块。</div>`;
+    renderCombinedTimeline(planEntries, dones);
+  }
+
+  function timelineShell(el) {
+    const height = (dayEnd - dayStart) * minutePx;
+    el.style.height = `${height}px`;
+    const hourLabels = [];
+    for (let h=6; h<=24; h++) {
+      hourLabels.push(`<div class="hour-label" style="top:${(h*60-dayStart)*minutePx}px">${pad(h%24)}:00</div>`);
+    }
+    return hourLabels;
+  }
+
+  function blockPosition(startTime, endTime) {
+    let s = timeToMin(startTime), e = timeToMin(endTime);
+    if (s == null || e == null) return null;
+    if (e <= s) e += 24*60;
+    const visibleS = Math.max(s, dayStart);
+    const visibleE = Math.min(e, dayEnd);
+    if (visibleE <= dayStart || visibleS >= dayEnd) return null;
+    return {
+      top: (visibleS - dayStart) * minutePx,
+      height: Math.max(24, (visibleE - visibleS) * minutePx)
+    };
+  }
+
+  function renderCombinedTimeline(tasks, dones) {
+    const el = $('combinedTimeline');
+    const hourLabels = timelineShell(el);
+    const blocks = [];
+
+    const plannedBlocks = tasks.filter(t => t.startTime && t.endTime);
+    plannedBlocks.forEach(t => {
+      const pos = blockPosition(t.startTime, t.endTime);
+      if (!pos) return;
+      const cls = isDoneTask(t) ? 'side-todo done-planned' : 'side-todo';
+      const statusText = isDoneTask(t) ? `已完成 ${escapeHtml(t.completedDate || '')}` : '未完成';
+      const todoActions = t.legacy
+        ? `<button class="btn small" data-action="edit-task" data-id="${t.taskId}" type="button">修改</button><button class="btn small danger" data-action="clear-legacy-plan" data-id="${t.taskId}" type="button">删除时间块</button>`
+        : `<button class="btn small" data-action="edit-plan" data-id="${t.planId}" type="button">修改</button><button class="btn small danger" data-action="delete-plan" data-id="${t.planId}" type="button">删除</button>`;
+      const displayHeight = Math.max(pos.height, 58);
+      blocks.push(`<div class="block ${cls} editable-todo-block" title="${escapeHtml(t.title)}" style="top:${pos.top}px;height:${displayHeight}px">
+        <div class="block-title">${escapeHtml(t.title)}</div>
+        <div class="block-time">计划 ${escapeHtml(t.startTime)}–${escapeHtml(t.endTime)} · ${statusText}</div>
+        <div class="block-actions">${todoActions}</div>
+      </div>`);
+    });
+
+    const doneBlocks = dones.filter(d => d.startTime && d.endTime);
+    doneBlocks.forEach(d => {
+      const pos = blockPosition(d.startTime, d.endTime);
+      if (!pos) return;
+      const cls = (d.type === 'partial' || d.type === 'unfinished') ? 'side-done partial' : ((d.type === 'direct' || d.type === 'direct-timer') ? 'side-done direct' : 'side-done');
+      const statusText = isCompletionRecord(d) ? '已完成' : '未完成';
+      blocks.push(`<div class="block ${cls}" title="${escapeHtml(d.title)}" style="top:${pos.top}px;height:${pos.height}px">
+        <div class="block-title">${escapeHtml(d.title)}</div>
+        <div class="block-time">实际 ${escapeHtml(d.startTime)}–${escapeHtml(d.endTime)} · ${statusText} · ${formatMinutes(d.durationMin || 0)}</div>
+      </div>`);
+    });
+
+    const empties = [];
+    if (!plannedBlocks.length) empties.push(`<div class="empty-timeline left">这一天没有安排计划 Todo 时间块。</div>`);
+    if (!doneBlocks.length) empties.push(`<div class="empty-timeline right">这一天没有带实际开始/结束时间的 done / 时间块。</div>`);
+    el.innerHTML = hourLabels.join('') + blocks.join('') + empties.join('');
+  }
+
+  function renderDayJumpCalendar() {
+    const cal = $('dayJumpCalendar');
+    if (!cal) return;
+    if (!jumpMonth) jumpMonth = state.selectedDate.slice(0,7) + '-01';
+    const { start } = monthRange(jumpMonth);
+    $('jumpMonthTitle').textContent = `${start.getFullYear()}年${start.getMonth()+1}月`;
+    $('jumpWeekdays').innerHTML = ['周一','周二','周三','周四','周五','周六','周日'].map(w => `<div class="mini-weekday">${w}</div>`).join('');
+    const firstDayMondayIndex = (start.getDay() + 6) % 7;
+    const gridStart = new Date(start);
+    gridStart.setDate(start.getDate() - firstDayMondayIndex);
+    const cells = [];
+    for (let i=0; i<42; i++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + i);
+      const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const other = d.getMonth() !== start.getMonth();
+      cells.push(`<button type="button" class="mini-day ${other?'other':''} ${iso === todayISO()?'today':''} ${iso === state.selectedDate?'selected':''}" data-date="${iso}">${d.getDate()}</button>`);
+    }
+    $('jumpDays').innerHTML = cells.join('');
+  }
+
+  function positionJumpCalendar() {
+    const cal = $('dayJumpCalendar');
+    const toggle = $('dayJumpToggle');
+    if (!cal || !toggle || cal.classList.contains('hidden')) return;
+    const rect = toggle.getBoundingClientRect();
+    const gap = 8;
+    const width = Math.min(320, Math.max(280, window.innerWidth - 16));
+    cal.style.width = `${width}px`;
+    let left = rect.right - width;
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+    let top = rect.bottom + gap;
+    const maxTop = window.innerHeight - Math.min(cal.offsetHeight || 360, window.innerHeight - 24) - 8;
+    if (top > maxTop && rect.top > window.innerHeight / 2) {
+      top = Math.max(8, rect.top - (cal.offsetHeight || 360) - gap);
+    }
+    cal.style.left = `${left}px`;
+    cal.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function openJumpCalendar() {
+    jumpMonth = state.selectedDate.slice(0,7) + '-01';
+    renderDayJumpCalendar();
+    $('dayJumpCalendar').classList.remove('hidden');
+    requestAnimationFrame(positionJumpCalendar);
+  }
+
+  function closeJumpCalendar() {
+    const cal = $('dayJumpCalendar');
+    if (cal) cal.classList.add('hidden');
+  }
+
+  function toggleJumpCalendar() {
+    const cal = $('dayJumpCalendar');
+    if (!cal) return;
+    if (cal.classList.contains('hidden')) openJumpCalendar();
+    else closeJumpCalendar();
+  }
+
+  function shiftJumpMonth(delta) {
+    const d = parseISODate(jumpMonth || state.selectedDate.slice(0,7) + '-01');
+    d.setMonth(d.getMonth() + delta);
+    jumpMonth = `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`;
+    renderDayJumpCalendar();
+    requestAnimationFrame(positionJumpCalendar);
+  }
+
+  function renderBacklog() {
+    const open = state.tasks.filter(t => !isDoneTask(t)).sort((a,b) => a.receivedDate.localeCompare(b.receivedDate) || sortTasks(a,b));
+    $('backlogList').innerHTML = open.length ? open.map(taskCard).join('') : `<div class="empty">目前没有未完成任务。</div>`;
+
+    const monthDones = donesInMonth();
+    const byCat = new Map();
+    monthDones.forEach(d => byCat.set(d.category || '工作', (byCat.get(d.category || '工作') || 0) + Number(d.durationMin || 0)));
+    const max = Math.max(1, ...byCat.values());
+    const rows = Array.from(byCat.entries()).sort((a,b)=>b[1]-a[1]);
+    $('categoryChart').innerHTML = rows.length ? rows.map(([cat,min]) => {
+      const color = colorForCategory(cat);
+      return `<div class="bar-row"><div class="cat-label"><span class="cat-dot" style="background:${color}"></span><span class="cat-name">${escapeHtml(cat)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, min/max*100)}%; background:${color}"></div></div><div>${formatMinutes(min)}</div></div>`;
+    }).join('') : `<div class="empty">本月还没有带时长的 done。</div>`;
+  }
+
+  function renderCompletedPool() {
+    const box = $('completedTaskList');
+    if (!box) return;
+    const completed = state.tasks
+      .filter(t => isDoneTask(t))
+      .sort((a,b) => (b.completedDate || '').localeCompare(a.completedDate || '') || (b.receivedDate || '').localeCompare(a.receivedDate || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const completedTotalMin = completed.reduce((sum, task) => sum + taskTotalMinutes(task.id), 0);
+    $('completedTaskCount').textContent = `${completed.length} 个正式已完成任务；累计投入 ${formatMinutes(completedTotalMin)}；不包含临时 Done。`;
+    box.innerHTML = completed.length ? completed.map(taskCard).join('') : `<div class="empty">目前还没有正式已完成任务。</div>`;
+  }
+
+  function renderPlanTaskSelect() {
+    const select = $('planTaskSelect');
+    if (!select) return;
+    const open = state.tasks.filter(t => !isDoneTask(t)).sort((a,b) => a.receivedDate.localeCompare(b.receivedDate) || sortTasks(a,b));
+    select.innerHTML = open.length
+      ? open.map(t => `<option value="${t.id}">${escapeHtml(t.title)} · 收到 ${escapeHtml(formatDateShort(t.receivedDate))}</option>`).join('')
+      : `<option value="">没有未完成任务</option>`;
+    select.disabled = !open.length;
+    const form = $('schedulePlanForm');
+    if (form) form.querySelector('button[type="submit"]').disabled = !open.length;
+  }
+
+  function renderActiveTimer() {
+    const box = $('activeTimerBox');
+    if (!state.activeTimer) {
+      box.classList.remove('show');
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      return;
+    }
+    box.classList.add('show');
+    $('activeTimerTitle').textContent = state.activeTimer.title || '未命名计时';
+    const activeDate = state.activeTimer.date || state.selectedDate || todayISO();
+    $('activeTimerDateSelect').innerHTML = dateSelectOptions(activeDate, [state.selectedDate, todayISO()]);
+    const update = () => $('activeTimerClock').textContent = formatElapsed(timerElapsedMs(state.activeTimer));
+    update();
+    if (!timerInterval) timerInterval = setInterval(update, 1000);
+    $('finishTimerBtn').disabled = state.activeTimer.mode !== 'task';
+    $('timerUnfinishedBtn').disabled = state.activeTimer.mode !== 'task';
+    $('pauseContinueBtn').textContent = state.activeTimer.mode === 'direct' ? '暂停并记录' : '今天继续';
+  }
+
+  function addPlan(e) {
+    e.preventDefault();
+    const taskId = $('planTaskSelect').value;
+    const task = getTask(taskId);
+    if (!task || isDoneTask(task)) return alert('请选择一个未完成任务。');
+    const date = $('planDate').value || state.selectedDate;
+    const start = readTimeInput('planStart', '计划开始', true);
+    if (start === null) return;
+    const end = readTimeInput('planEnd', '计划结束', true);
+    if (end === null) return;
+    if (!date || !start || !end) return alert('请填写计划日期、开始时间和结束时间。');
+    if (!Array.isArray(state.plans)) state.plans = [];
+    state.plans.push({
+      id: id(), taskId, title: task.title, date, startTime: start, endTime: end,
+      category: task.category || '工作', priority: task.priority || 'none',
+      note: $('planNote').value.trim(), createdAt: new Date().toISOString()
+    });
+    $('planStart').value = '';
+    $('planEnd').value = '';
+    $('planNote').value = '';
+    state.selectedDate = date;
+    setMonth(date);
+  }
+
+  function addTask(e) {
+    e.preventDefault();
+    const title = $('taskTitle').value.trim();
+    if (!title) return;
+    const start = readTimeInput('taskStart', '初始计划开始');
+    if (start === null) return;
+    const end = readTimeInput('taskEnd', '初始计划结束');
+    if (end === null) return;
+    const task = {
+      id: id(),
+      title,
+      receivedDate: $('taskReceivedDate').value || state.selectedDate,
+      startTime: '',
+      endTime: '',
+      category: selectedCategory('taskCategory', '工作'),
+      priority: $('taskPriority').value || 'none',
+      note: $('taskNote').value.trim(),
+      status: 'open',
+      completedDate: '',
+      createdAt: new Date().toISOString()
+    };
+    state.tasks.push(task);
+    if (start && end) {
+      if (!Array.isArray(state.plans)) state.plans = [];
+      state.plans.push({
+        id: id(), taskId: task.id, title: task.title, date: task.receivedDate,
+        startTime: start, endTime: end, category: task.category, priority: task.priority,
+        note: task.note, createdAt: new Date().toISOString()
+      });
+    }
+    e.target.reset();
+    setCategorySelect('taskCategory', '工作');
+    $('taskPriority').value = 'none';
+    syncFormDates();
+    save(); render();
+  }
+
+  function addDone(e) {
+    e.preventDefault();
+    const title = $('doneTitle').value.trim();
+    if (!title) return;
+    const start = readTimeInput('doneStart', '开始时间');
+    if (start === null) return;
+    const end = readTimeInput('doneEnd', '结束时间');
+    if (end === null) return;
+    const completionState = $('doneCompletionState').value || 'complete';
+    state.dones.push({
+      id: id(),
+      taskId: null,
+      title,
+      date: $('doneDate').value || state.selectedDate,
+      startTime: start,
+      endTime: end,
+      durationMin: durationBetween(start,end),
+      category: selectedCategory('doneCategory', '工作'),
+      priority: $('donePriority').value || 'none',
+      note: $('doneNote').value.trim(),
+      type: completionState === 'complete' ? 'direct' : 'unfinished',
+      createdAt: new Date().toISOString()
+    });
+    e.target.reset();
+    setCategorySelect('doneCategory', '工作');
+    $('donePriority').value = 'none';
+    $('doneCompletionState').value = 'complete';
+    syncFormDates();
+    save(); render();
+  }
+
+  function startTaskTimer(taskId) {
+    if (state.activeTimer) return alert('已有一个计时器正在运行。');
+    const t = getTask(taskId);
+    if (!t || isDoneTask(t)) return;
+    state.activeTimer = {
+      id: id(), mode: 'task', taskId: t.id, title: t.title,
+      category: t.category || '工作', priority: t.priority || 'none', note: t.note || '',
+      date: state.selectedDate, startTime: nowTime(), startEpoch: Date.now()
+    };
+    save(); render();
+  }
+
+  function startDirectTimer() {
+    if (state.activeTimer) return alert('已有一个计时器正在运行。');
+    const title = $('doneTitle').value.trim();
+    if (!title) return alert('请先填写完成内容。');
+    state.activeTimer = {
+      id: id(), mode: 'direct', taskId: null, title,
+      category: selectedCategory('doneCategory', '工作'),
+      priority: $('donePriority').value || 'none', note: $('doneNote').value.trim(),
+      completeState: $('doneCompletionState').value || 'complete',
+      date: $('doneDate').value || state.selectedDate, startTime: nowTime(), startEpoch: Date.now()
+    };
+    save(); render();
+  }
+
+  function stopTimer(resultType) {
+    const timer = state.activeTimer;
+    if (!timer) return;
+    const end = nowTime();
+    const elapsedMin = Math.max(1, Math.round(timerElapsedMs(timer) / 60000));
+    const date = $('activeTimerDateSelect')?.value || timer.date || state.selectedDate || todayISO();
+    const type = timer.mode === 'direct' ? (timer.completeState === 'unfinished' ? 'unfinished' : 'direct-timer') : (resultType === 'complete' ? 'task' : (resultType === 'unfinished' ? 'unfinished' : 'partial'));
+    const d = {
+      id: id(),
+      taskId: timer.taskId,
+      title: timer.title,
+      date,
+      startTime: timer.startTime || '',
+      endTime: end,
+      durationMin: elapsedMin,
+      category: timer.category || '工作',
+      priority: timer.priority || 'none',
+      note: timer.note || '',
+      type,
+      createdAt: new Date().toISOString()
+    };
+    state.dones.push(d);
+    if (resultType === 'complete' && timer.taskId) {
+      const task = getTask(timer.taskId);
+      if (task) { task.status = 'done'; task.completedDate = date; }
+    }
+    state.activeTimer = null;
+    state.selectedDate = date;
+    setMonth(date);
+  }
+
+
+  function completeTask(taskId, completeDate = state.selectedDate) {
+    if (state.activeTimer && state.activeTimer.taskId === taskId) return stopTimer('complete');
+    if (state.activeTimer) return alert('已有其他计时器正在运行，请先暂停或完成。');
+    const t = getTask(taskId);
+    if (!t || isDoneTask(t)) return;
+    const date = completeDate || state.selectedDate;
+    t.status = 'done';
+    t.completedDate = date;
+    state.dones.push({
+      id: id(), taskId: t.id, title: t.title, date,
+      startTime: '', endTime: '', durationMin: 0,
+      category: t.category || '工作', priority: t.priority || 'none', note: t.note || '',
+      type: 'task', createdAt: new Date().toISOString()
+    });
+    state.selectedDate = date;
+    setMonth(date);
+  }
+
+
+  function reopenTask(taskId) {
+    const t = getTask(taskId);
+    if (!t) return;
+    t.status = 'open'; t.completedDate = '';
+    save(); render();
+  }
+
+  function deleteTask(taskId) {
+    const t = getTask(taskId);
+    if (!t) return;
+    if (!confirm(`删除任务「${t.title}」？关联 done 不会自动删除；该任务的计划时间块会一起删除。`)) return;
+    state.tasks = state.tasks.filter(x => x.id !== taskId);
+    state.plans = (state.plans || []).filter(x => x.taskId !== taskId);
+    save(); render();
+  }
+
+  function deleteDone(doneId) {
+    const d = state.dones.find(x => x.id === doneId);
+    if (!d) return;
+    if (!confirm(`删除 done「${d.title}」？`)) return;
+    state.dones = state.dones.filter(x => x.id !== doneId);
+    save(); render();
+  }
+
+  function deletePlan(planId) {
+    const p = (state.plans || []).find(x => x.id === planId);
+    if (!p) return;
+    const task = getTask(p.taskId);
+    if (!confirm(`删除计划时间块「${task?.title || p.title || ''} ${p.startTime}–${p.endTime}」？`)) return;
+    state.plans = (state.plans || []).filter(x => x.id !== planId);
+    save(); render();
+  }
+
+  function clearLegacyPlan(taskId) {
+    const t = getTask(taskId);
+    if (!t) return;
+    if (!confirm(`删除旧任务自带计划时间块「${t.title || ''} ${t.startTime || ''}–${t.endTime || ''}」？
+
+只会清除计划开始/结束时间，不会删除任务本身。`)) return;
+    t.startTime = '';
+    t.endTime = '';
+    save(); render();
+  }
+
+  function editPlan(planId) {
+    const p = (state.plans || []).find(x => x.id === planId);
+    if (!p) return;
+    const date = prompt('计划日期 YYYY-MM-DD', p.date || state.selectedDate);
+    if (date === null) return;
+    const start = prompt('计划开始 HH:MM', p.startTime || '');
+    if (start === null) return;
+    const end = prompt('计划结束 HH:MM', p.endTime || '');
+    if (end === null) return;
+    const note = prompt('备注', p.note || '');
+    if (note === null) return;
+    p.date = /^\d{4}-\d{2}-\d{2}$/.test(date.trim()) ? date.trim() : p.date;
+    const normalizedStart = normalizeTimeText(start);
+    const normalizedEnd = normalizeTimeText(end);
+    if ((start.trim() && !normalizedStart) || (end.trim() && !normalizedEnd)) return alert('计划时间请使用 24 小时格式，例如 09:30 或 17:45。');
+    p.startTime = normalizedStart;
+    p.endTime = normalizedEnd;
+    p.note = note.trim();
+    state.selectedDate = p.date;
+    setMonth(p.date);
+  }
+
+  function openTaskEditModal(taskId) {
+    const t = getTask(taskId);
+    if (!t) return;
+    $('editTaskId').value = t.id;
+    $('editTaskTitle').value = t.title || '';
+    $('editTaskReceivedDate').value = t.receivedDate || state.selectedDate;
+    setCategorySelect('editTaskCategory', t.category || '工作');
+    $('editTaskPriority').value = t.priority || 'none';
+    $('editTaskStatus').value = isDoneTask(t) ? 'done' : 'open';
+    $('editTaskCompletedDate').value = t.completedDate || '';
+    $('editTaskNote').value = t.note || '';
+    $('editTaskStart').value = normalizeTimeText(t.startTime || '') || '';
+    $('editTaskEnd').value = normalizeTimeText(t.endTime || '') || '';
+    $('taskEditModal').classList.remove('hidden');
+  }
+
+  function closeTaskEditModal() {
+    $('taskEditModal').classList.add('hidden');
+    $('editTaskForm').reset();
+  }
+
+  function saveTaskEdit(e) {
+    e.preventDefault();
+    const t = getTask($('editTaskId').value);
+    if (!t) return closeTaskEditModal();
+    const editStart = readTimeInput('editTaskStart', '旧任务自带计划开始');
+    if (editStart === null) return;
+    const editEnd = readTimeInput('editTaskEnd', '旧任务自带计划结束');
+    if (editEnd === null) return;
+    const receivedDate = $('editTaskReceivedDate').value || t.receivedDate || state.selectedDate;
+    const completedDate = $('editTaskCompletedDate').value || '';
+    t.title = $('editTaskTitle').value.trim() || t.title;
+    t.receivedDate = /^\d{4}-\d{2}-\d{2}$/.test(receivedDate) ? receivedDate : (t.receivedDate || state.selectedDate);
+    t.category = selectedCategory('editTaskCategory', '工作');
+    t.priority = $('editTaskPriority').value || 'none';
+    t.status = $('editTaskStatus').value === 'done' ? 'done' : 'open';
+    t.completedDate = t.status === 'done' ? (completedDate || state.selectedDate) : '';
+    t.note = $('editTaskNote').value.trim();
+    t.startTime = editStart || '';
+    t.endTime = editEnd || '';
+    state.categories = normalizeCategories(state.categories, state.tasks, state.dones, state.plans);
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, state.categories);
+    closeTaskEditModal();
+    save(); render();
+  }
+
+  function editTask(taskId) { openTaskEditModal(taskId); }
+
+  function editDone(doneId) {
+    const d = state.dones.find(x => x.id === doneId);
+    if (!d) return;
+    const title = prompt('Done 内容', d.title);
+    if (title === null) return;
+    const start = prompt('开始时间 HH:MM，可留空', d.startTime || '');
+    if (start === null) return;
+    const end = prompt('结束时间 HH:MM，可留空', d.endTime || '');
+    if (end === null) return;
+    const category = prompt('类别', d.category || '工作');
+    if (category === null) return;
+    d.title = title.trim() || d.title;
+    const normalizedStart = normalizeTimeText(start);
+    const normalizedEnd = normalizeTimeText(end);
+    if ((start.trim() && !normalizedStart) || (end.trim() && !normalizedEnd)) return alert('时间请使用 24 小时格式，例如 09:30 或 17:45。');
+    d.startTime = normalizedStart;
+    d.endTime = normalizedEnd;
+    d.durationMin = durationBetween(d.startTime, d.endTime);
+    d.category = category.trim() || '工作';
+    state.categories = normalizeCategories(state.categories, state.tasks, state.dones, state.plans);
+    state.categoryColors = normalizeCategoryColors(state.categoryColors, state.categories);
+    save(); render();
+  }
+
+  function delegateActions(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const itemId = btn.dataset.id;
+    if (action === 'start-task') startTaskTimer(itemId);
+    if (action === 'complete-task') {
+      const select = btn.closest('.task-card')?.querySelector('.complete-date-select');
+      completeTask(itemId, select?.value || state.selectedDate);
+    }
+    if (action === 'reopen-task') reopenTask(itemId);
+    if (action === 'delete-task') deleteTask(itemId);
+    if (action === 'edit-task') editTask(itemId);
+    if (action === 'edit-plan') editPlan(itemId);
+    if (action === 'delete-plan') deletePlan(itemId);
+    if (action === 'clear-legacy-plan') clearLegacyPlan(itemId);
+    if (action === 'delete-done') deleteDone(itemId);
+    if (action === 'edit-done') editDone(itemId);
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
+    document.querySelectorAll('.view').forEach(x => x.classList.toggle('active', x.id === `view-${tab}`));
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    downloadBlob(blob, `任务时间轴备份-${todayISO()}.json`);
+  }
+  function exportCsv() {
+    const rows = [];
+    rows.push(['type','title','date','received_date','completed_date','start','end','duration_min','category','priority','status','note','task_id','task_total_duration_min']);
+    state.tasks.forEach(t => rows.push(['task', t.title, '', t.receivedDate, t.completedDate || '', t.startTime || '', t.endTime || '', '', t.category || '', t.priority || 'none', t.status || 'open', t.note || '', t.id, taskTotalMinutes(t.id)]));
+    (state.plans || []).forEach(p => { const t = getTask(p.taskId) || {}; rows.push(['plan', t.title || p.title || '', p.date, t.receivedDate || '', '', p.startTime || '', p.endTime || '', durationBetween(p.startTime || '', p.endTime || ''), t.category || p.category || '', t.priority || p.priority || 'none', t.status || 'open', p.note || '', p.taskId || '', p.taskId ? taskTotalMinutes(p.taskId) : '']); });
+    state.dones.forEach(d => rows.push(['done', d.title, d.date, '', '', d.startTime || '', d.endTime || '', d.durationMin || 0, d.category || '', d.priority || 'none', d.type || '', d.note || '', d.taskId || '', d.taskId ? taskTotalMinutes(d.taskId) : '']));
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    downloadBlob(new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'}), `任务时间轴导出-${todayISO()}.csv`);
+  }
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function importJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.dones)) throw new Error('bad');
+        if (!confirm('导入会覆盖当前本机数据。确定继续？')) return;
+        state = {
+          tasks: parsed.tasks,
+          dones: parsed.dones,
+          plans: Array.isArray(parsed.plans) ? parsed.plans : [],
+          categories: normalizeCategories(parsed.categories, parsed.tasks, parsed.dones, parsed.plans),
+          categoryColors: normalizeCategoryColors(parsed.categoryColors, normalizeCategories(parsed.categories, parsed.tasks, parsed.dones, parsed.plans)),
+          selectedDate: parsed.selectedDate || todayISO(),
+          currentMonth: parsed.currentMonth || todayISO().slice(0,7) + '-01',
+          activeTimer: parsed.activeTimer || null
+        };
+        save(); render(); alert('导入完成。');
+      } catch(e) { alert('JSON 格式错误，无法导入。'); }
+    };
+    reader.readAsText(file);
+  }
+
+  function init() {
+    // 每次打开 app 都从多伦多时区的今天开始，而不是停留在上次浏览的日期。
+    const startupToday = todayISO();
+    state.selectedDate = startupToday;
+    state.currentMonth = `${startupToday.slice(0,7)}-01`;
+    jumpMonth = state.currentMonth;
+    save();
+
+    initTime24Inputs();
+    $('addTaskForm').addEventListener('submit', addTask);
+    $('addDoneForm').addEventListener('submit', addDone);
+    $('schedulePlanForm').addEventListener('submit', addPlan);
+    document.body.addEventListener('click', delegateActions);
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+    $('prevDay').addEventListener('click', () => setSelectedDate(addDays(state.selectedDate, -1)));
+    $('nextDay').addEventListener('click', () => setSelectedDate(addDays(state.selectedDate, 1)));
+    $('prevMonth').addEventListener('click', () => {
+      const d = parseISODate(state.currentMonth); d.setMonth(d.getMonth()-1); setMonth(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`);
+    });
+    $('nextMonth').addEventListener('click', () => {
+      const d = parseISODate(state.currentMonth); d.setMonth(d.getMonth()+1); setMonth(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`);
+    });
+    $('todayBtn').addEventListener('click', () => setSelectedDate(todayISO()));
+    $('dayJumpToggle').addEventListener('click', e => { e.stopPropagation(); toggleJumpCalendar(); });
+    $('jumpPrevMonth').addEventListener('click', e => { e.stopPropagation(); shiftJumpMonth(-1); });
+    $('jumpNextMonth').addEventListener('click', e => { e.stopPropagation(); shiftJumpMonth(1); });
+    $('jumpDays').addEventListener('click', e => {
+      const btn = e.target.closest('[data-date]');
+      if (btn) { closeJumpCalendar(); setSelectedDate(btn.dataset.date); }
+    });
+    $('dayJumpCalendar').addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('click', e => { if (!e.target.closest('#dayJumpPicker')) closeJumpCalendar(); });
+    window.addEventListener('resize', positionJumpCalendar);
+    window.addEventListener('scroll', positionJumpCalendar, true);
+    $('dayJumpToday').addEventListener('click', () => setSelectedDate(todayISO()));
+    $('startDirectTimerBtn').addEventListener('click', startDirectTimer);
+    $('pauseContinueBtn').addEventListener('click', () => stopTimer('partial'));
+    $('timerUnfinishedBtn').addEventListener('click', () => stopTimer('unfinished'));
+    $('finishTimerBtn').addEventListener('click', () => stopTimer('complete'));
+    $('cancelTimerBtn').addEventListener('click', () => { if (confirm('取消当前计时？不会生成 done。')) { state.activeTimer = null; save(); render(); } });
+    $('editTaskForm').addEventListener('submit', saveTaskEdit);
+    $('closeTaskEditBtn').addEventListener('click', closeTaskEditModal);
+    $('cancelTaskEditBtn').addEventListener('click', closeTaskEditModal);
+    $('taskEditModal').addEventListener('click', e => { if (e.target.id === 'taskEditModal') closeTaskEditModal(); });
+    attachCategorySelect('taskCategory');
+    attachCategorySelect('doneCategory');
+    attachCategorySelect('editTaskCategory');
+    $('saveCategoriesBtn').addEventListener('click', saveCategorySettings);
+    $('resetCategoriesBtn').addEventListener('click', () => { if (confirm('恢复默认类别选项？现有任务记录不会删除，只是不再作为预设显示。')) resetCategorySettings(); });
+    $('saveCategoryColorsBtn').addEventListener('click', saveCategoryColors);
+    $('resetCategoryColorsBtn').addEventListener('click', () => { if (confirm('恢复默认类别颜色？')) resetCategoryColors(); });
+    $('exportJsonBtn').addEventListener('click', exportJson);
+    $('exportCsvBtn').addEventListener('click', exportCsv);
+    $('importJsonInput').addEventListener('change', e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value=''; });
+    $('clearDataBtn').addEventListener('click', () => { if (confirm('确认清空本机所有任务和 done？')) { state = defaultState(); save(); render(); } });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+    }
+    render();
+  }
+
+  init();
+})();
+</script>
+<script type="module" src="./sync.js"></script>
+</body>
+</html>
