@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monthly-timeline-combined-v20260811-cloud-sync-configured2';
+const CACHE_NAME = 'monthly-timeline-combined-v20260812-cloud-sync-config-fixed';
 const ASSETS = [
   './',
   './index.html',
